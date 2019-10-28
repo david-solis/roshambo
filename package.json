@@ -1,0 +1,33 @@
+{
+  "name": "roshambo",
+  "version": "1.0.0",
+  "description": "Roshambo, an ethereum smart contract",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "chai": "^4.2.0",
+    "ganache-time-traveler": "^1.0.5",
+    "truffle-assertions": "^0.9.1",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david-solis/roshambo.git"
+  },
+  "keywords": [
+    "ethereum",
+    "solidity"
+  ],
+  "author": "David Solis",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/david-solis/roshambo/issues"
+  },
+  "homepage": "https://github.com/david-solis/roshambo#readme"
+}
