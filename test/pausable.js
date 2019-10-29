@@ -1,10 +1,12 @@
 const truffleAssert = require('truffle-assertions');
-const {asciiToHex} = web3.utils;
+const {toBN, asciiToHex} = web3.utils;
 const {eventEmitted, reverts} = truffleAssert;
 
 const RockPaperScissors = artifacts.require("RockPaperScissors");
 
 contract('RockPaperScissors', accounts => {
+    const BN_DURATION_FOR_REVEAL = toBN(1800); // 30 minutes in secs
+
     const [OWNER, ALICE, BOB] = accounts;
 
     const ROCK = 1;
@@ -14,7 +16,7 @@ contract('RockPaperScissors', accounts => {
     let pausable;
 
     beforeEach("deploy new Pausable", async () => {
-        pausable = await RockPaperScissors.new(600, {from: OWNER});
+        pausable = await RockPaperScissors.new(BN_DURATION_FOR_REVEAL, {from: OWNER});
     });
 
     describe("pause", function () {

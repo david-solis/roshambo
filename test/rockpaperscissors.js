@@ -11,12 +11,21 @@ const uuidv4 = require("uuid/v4");
 contract('RockPaperScissors', (accounts) => {
     const NONE = 0, ROCK = 1, PAPER = 2, SCISSORS = 3, LIZARD = 4;
     const OPPONENT = 2;
-    const BN_DURATION_FOR_JOIN = toBN(86400); // 1 day in secs
-    const BN_DURATION_FOR_REVEAL = toBN(60);  // 10 minutes in secs
+
+    // duration 4 reveal
+    const BN_MIN_DURATION_FOR_REVEAL = toBN(1800);  // 30 minutes in secs
     const BN_MAX_DURATION_FOR_REVEAL = toBN(3600);  // 1 hour in secs
+    const BN_DURATION_FOR_REVEAL = toBN(1800);      // 30 minutes in secs
+
+    // duration 4 join
+    const BN_MIN_DURATION_FOR_JOIN = toBN(3600);    // 1 day in secs
+    const BN_MAX_DURATION_FOR_JOIN = toBN(86400);   // 1 hour in secs
+    const BN_DURATION_FOR_JOIN = toBN(43200);       // 12 hours in secs
+
     const BN_0 = toBN("0");
     const BN_1_ETH = toBN(toWei("1", "ether"));
     const BN_2_ETH = toBN(toWei("2", "ether"));
+
     const FAKE_GAME_ID = asciiToHex("Laputa: Castle in the Sky");
     const PASSWD = asciiToHex("Geheim");
 
@@ -55,17 +64,16 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(duration4Reveal.toString(), BN_DURATION_FOR_REVEAL.toString(), "rps duration4Reveal mismatch");
         });
 
-        it("duration for reveal must be greater than zero", async () => {
+        it("duration for reveal must be greater or equal to MIN_DURATION_FOR_REVEAL", async () => {
             await reverts(
-                rps.setDuration4Reveal(BN_0, {from: OWNER}), "duration for reveal must be greater than zero"
-            );
+                rps.setDuration4Reveal(BN_MIN_DURATION_FOR_REVEAL - 1, {from: OWNER}),
+                "duration for reveal must be greater or equal to MIN_DURATION_FOR_REVEAL");
         });
 
-        it("duration for reveal must be less than or equal that the threshold", async () => {
+        it("duration for reveal must be less than or equal to MAX_DURATION_FOR_REVEAL", async () => {
             await reverts(
                 rps.setDuration4Reveal(BN_MAX_DURATION_FOR_REVEAL + 1, {from: OWNER}),
-                "duration for reveal must be less than or equal that the threshold"
-            );
+                "duration for reveal must be less than or equal to MAX_DURATION_FOR_REVEAL");
         });
     });
 
@@ -84,41 +92,45 @@ contract('RockPaperScissors', (accounts) => {
     });
 
     describe("game ids", function () {
-        it("game already exists", async () => {
-            const id = await rps.generateGameId(ROCK, secret);
-
-            await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
+        it("sender is address ZERO", async () => {
             await reverts(
-                rps.generateGameId(ROCK, secret), "there is a previous game with same gameId");
+                rps.generateGameId(ADDRESS_ZERO, NONE, secret), "invalid sender");
         });
 
         it("NONE is out of bounds", async () => {
             await reverts(
-                rps.generateGameId(NONE, secret), "choice is out of bounds"
-            );
+                rps.generateGameId(ALICE, NONE, secret), "NONE is not an allowed value");
         });
 
         it("LIZARD is out of bounds", async () => {
-            await reverts(
-                rps.generateGameId(LIZARD, secret), "choice is out of bounds"
-            );
+            await rps.generateGameId(ALICE, LIZARD, secret).catch(function (error) {
+                if (error.toString().indexOf("invalid opcode") === -1) assert(false, error.toString());
+            })
         });
 
         it("should have different game ids across instances given same parameters", async () => {
             const otherInstance = await RockPaperScissors.new(BN_DURATION_FOR_REVEAL, {from: ALICE});
 
-            const rpsGameId = await rps.generateGameId(ROCK, secret);
-            const otherInstanceGameId = await otherInstance.generateGameId(ROCK, secret);
+            const rpsGameId = await rps.generateGameId(ALICE, ROCK, secret);
+            const otherInstanceGameId = await otherInstance.generateGameId(ALICE, ROCK, secret);
 
             assert.notEqual(rpsGameId, otherInstanceGameId);
         });
+
+        it("should have different game ids across the same instance given different sender", async () => {
+            const gameId1 = await rps.generateGameId(ALICE, ROCK, secret);
+            const gameId2 = await rps.generateGameId(BOB, ROCK, secret);
+
+            assert.notEqual(gameId1, gameId2);
+        });
+
     });
 
     describe("createGame", () => {
         let id;
 
         beforeEach("prepare secret", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
         });
 
         it("invalid opponent", async () => {
@@ -127,16 +139,16 @@ contract('RockPaperScissors', (accounts) => {
                 "invalid opponent");
         });
 
-        it("duration for join is zero", async () => {
+        it("duration for join greater or equal to MIN_DURATION_FOR_JOIN", async () => {
             await reverts(
-                rps.createGame(id, BOB, BN_0, {from: ALICE, value: BN_1_ETH}),
-                "duration for join must be greater than zero");
+                rps.createGame(id, BOB, BN_MIN_DURATION_FOR_JOIN - 1, {from: ALICE, value: BN_1_ETH}),
+                "duration for join greater or equal to MIN_DURATION_FOR_JOIN");
         });
 
-        it("invalid duration for join", async () => {
+        it("duration for join must be less than or equal to MAX_DURATION_FOR_JOIN", async () => {
             await reverts(
-                rps.createGame(id, BOB, BN_DURATION_FOR_JOIN + 1, {from: ALICE, value: BN_1_ETH}),
-                "duration for join must be less than or equal that the threshold");
+                rps.createGame(id, BOB, BN_MAX_DURATION_FOR_JOIN + 1, {from: ALICE, value: BN_1_ETH}),
+                "duration for join must be less than or equal to MAX_DURATION_FOR_JOIN");
         });
 
         it("game already exists", async () => {
@@ -161,7 +173,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.opponent, BOB, "opponent mismatch");
             assert.strictEqual(BN_1_ETH.toString(), info.bet.toString(), "bet mismatch");
             assert.notEqual(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not set");
-            assert.notEqual(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not set");
+            assert.strictEqual(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not set");
         });
     });
 
@@ -169,7 +181,12 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("prepare secret", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
+        });
+
+        it("NONE is not an allowed choice", async () => {
+            await reverts(
+                rps.joinGame(id, NONE, {from: BOB, value: BN_1_ETH}), "NONE is not an allowed value");
         });
 
         it("game does not exist", async () => {
@@ -192,12 +209,12 @@ contract('RockPaperScissors', (accounts) => {
         it("not enough balance", async () => {
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_2_ETH});
             await reverts(
-                rps.joinGame(id, PAPER, {from: BOB, value: BN_1_ETH}), "not enough balance");
+                rps.joinGame(id, PAPER, {from: BOB, value: BN_1_ETH}));
         });
 
         it("remainder balance", async () => {
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
-            rps.joinGame(id, PAPER, {from: BOB, value: BN_2_ETH});
+            await rps.joinGame(id, PAPER, {from: BOB, value: BN_2_ETH});
             // Check balance
             const balance = await rps.getPayment(BOB);
             assert.strictEqual(BN_1_ETH.toString(), balance.toString(), "balance mismatch");
@@ -207,9 +224,9 @@ contract('RockPaperScissors', (accounts) => {
             // First game
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
             await rps.joinGame(id, PAPER, {from: BOB, value: BN_1_ETH});
-            await rps.revealChoice(ROCK, secret);
+            await rps.revealChoice(ROCK, secret, {from: ALICE});
             // Second game
-            const id2 = await rps.generateGameId(SCISSORS, PASSWD);
+            const id2 = await rps.generateGameId(ALICE, SCISSORS, PASSWD);
             await rps.createGame(id2, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_2_ETH});
             await rps.joinGame(id2, PAPER, {from: BOB, value: BN_0});
             // Check balance
@@ -251,7 +268,7 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("create game", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
             await rps.createGame(id, CAROL, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
         });
 
@@ -274,7 +291,7 @@ contract('RockPaperScissors', (accounts) => {
             await rps.joinGame(id, PAPER, {from: CAROL, value: BN_1_ETH});
             await advanceTime(BN_DURATION_FOR_REVEAL * 1000);
             await reverts(
-                rps.revealChoice(ROCK, secret), "deadline for reveal has expired");
+                rps.revealChoice(ROCK, secret, {from: ALICE}), "deadline for reveal has expired");
         });
     });
 
@@ -282,7 +299,7 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("create game", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret, {from: ALICE});
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
         });
 
@@ -293,7 +310,7 @@ contract('RockPaperScissors', (accounts) => {
 
         it("opponent has not yet joined the game", async () => {
             await reverts(
-                rps.revealChoice(ROCK, secret), "opponent has not yet joined the game");
+                rps.revealChoice(ROCK, secret, {from: ALICE}), "opponent has not yet joined the game");
         });
 
         it("should reveal choice", async () => {
@@ -322,7 +339,7 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("prepare secret", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
         });
 
         it("opponent is already participating in the game", async () => {
@@ -340,10 +357,9 @@ contract('RockPaperScissors', (accounts) => {
 
         });
 
-        it("game has not started", async () => {
+        it("game does not exist", async () => {
             await reverts(
-                rps.cancelGame(id), "game has not started");
-
+                rps.cancelGame(id), "game does not exist");
         });
     });
 
@@ -351,7 +367,7 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("create game", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
         });
 
@@ -366,9 +382,9 @@ contract('RockPaperScissors', (accounts) => {
                 rps.claim(id), "deadline for reveal has not yet expired");
         });
 
-        it("game has not started", async () => {
+        it("game does not exist", async () => {
             await reverts(
-                rps.claim(FAKE_GAME_ID), "game has not started");
+                rps.claim(FAKE_GAME_ID), "game does not exist");
         });
     });
 
@@ -376,7 +392,7 @@ contract('RockPaperScissors', (accounts) => {
         let id;
 
         beforeEach("create game", async () => {
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
         });
 
@@ -438,10 +454,10 @@ contract('RockPaperScissors', (accounts) => {
 
         it("should withdrawPayment", async () => {
             // Create a game with bet = 1 ETH
-            id = await rps.generateGameId(ROCK, secret);
+            id = await rps.generateGameId(ALICE, ROCK, secret);
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
             await rps.joinGame(id, ROCK, {from: BOB, value: BN_1_ETH});
-            await rps.revealChoice(ROCK, secret);
+            await rps.revealChoice(ROCK, secret, {from: ALICE});
             // Get balances: (1) contract and (2) ALICE
             const balance1a = toBN(await getBalance(rps.address));
             const balance2a = toBN(await getBalance(ALICE));

@@ -20,7 +20,7 @@ import "./PullPayment.sol";
  * i.e., the player is penalized
  * Withdraw. The players can ask to transfer stakes to their wallet.
 */
-contract RockPaperScissors is PullPayment {
+contract RockPaperScissors is Pausable, PullPayment {
     using SafeMath for uint;
 
     enum Shape {NONE, ROCK, PAPER, SCISSORS}
@@ -38,15 +38,19 @@ contract RockPaperScissors is PullPayment {
 
     mapping(bytes32 => Game) public games;
 
+    // duration 4 reveal
+    uint private MIN_DURATION_FOR_REVEAL = 1800; // 30 minutes in seconds
     uint private MAX_DURATION_FOR_REVEAL = 3600; // 1 hour in seconds
-    uint private MAX_DURATION_FOR_JOIN = 86400; // 1 day in seconds
+    // duration 4 join
+    uint private MIN_DURATION_FOR_JOIN = 3600;   // 1 hour in seconds
+    uint private MAX_DURATION_FOR_JOIN = 86400;  // 1 day in seconds
 
     uint private duration4Reveal;
 
     event LogSetDuration4Reveal(address indexed sender, uint duration4Reveal);
 
     event LogCreateGame(address indexed player, bytes32 indexed gameId, address indexed opponent, uint bet,
-        uint deadline4Join, uint deadline4Reveal);
+        uint deadline4Join);
 
     event LogJoinGame(bytes32 indexed gameId, Shape opponentChoice, uint amount, uint deadline4Reveal);
 
@@ -56,13 +60,17 @@ contract RockPaperScissors is PullPayment {
 
     event LogClaim(address indexed sender, bytes32 indexed gameId);
 
+    event LogKill(address indexed owner);
+
     constructor(uint _duration4Reveal) Pausable(false) public {
         setDuration4Reveal(_duration4Reveal);
     }
 
     function setDuration4Reveal(uint _duration4Reveal) public fromOwner {
-        require(0 < _duration4Reveal, "duration for reveal must be greater than zero");
-        require(_duration4Reveal <= MAX_DURATION_FOR_REVEAL, "duration for reveal must be less than or equal that the threshold");
+        require(MIN_DURATION_FOR_REVEAL <= _duration4Reveal,
+            "duration for reveal must be greater or equal to MIN_DURATION_FOR_REVEAL");
+        require(_duration4Reveal <= MAX_DURATION_FOR_REVEAL,
+            "duration for reveal must be less than or equal to MAX_DURATION_FOR_REVEAL");
         duration4Reveal = _duration4Reveal;
         emit LogSetDuration4Reveal(msg.sender, duration4Reveal);
     }
@@ -72,25 +80,23 @@ contract RockPaperScissors is PullPayment {
     }
 
     /*
-     * Each game can be accessed via unique key, which is a hash derived from the inputs that game creator provided
+     * Players can access each game via a unique key, which is a hash derived from the inputs that the game creator
+     * provided.
      */
-    function generateGameId(uint8 choice, bytes32 secret) view public returns(bytes32 hashedChoice) {
-        hashedChoice = getHashedChoice(choice, secret);
-        require(games[hashedChoice].player == address(0), "there is a previous game with same gameId");
-    }
-
-    function getHashedChoice(uint8 choice, bytes32 secret) view internal returns(bytes32 hashedChoice) {
-        require(uint(Shape.NONE) < choice && choice <= uint(Shape.SCISSORS), "choice is out of bounds");
-        hashedChoice = keccak256(abi.encodePacked(address(this), choice, secret));
+    function generateGameId(address sender, Shape choice, bytes32 secret) view public returns(bytes32 hashedChoice) {
+        require(sender != address(0), "invalid sender");
+        require(choice != Shape.NONE, "NONE is not an allowed value");
+        hashedChoice = keccak256(abi.encodePacked(this, sender, choice, secret));
     }
 
     /*
-     * The player creates a game by submitting his hashed choice
+     * The player creates a game by submitting his hashed choice, i.e., the gameId.
      */
     function createGame(bytes32 gameId, address opponent, uint duration4Join) payable public whenNotPaused {
         require(opponent != address(0), "invalid opponent");
-        require(0 < duration4Join, "duration for join must be greater than zero");
-        require(duration4Join <= MAX_DURATION_FOR_JOIN, "duration for join must be less than or equal that the threshold");
+        require(MIN_DURATION_FOR_JOIN <= duration4Join, "duration for join greater or equal to MIN_DURATION_FOR_JOIN");
+        require(duration4Join <= MAX_DURATION_FOR_JOIN,
+            "duration for join must be less than or equal to MAX_DURATION_FOR_JOIN");
 
         Game storage game = games[gameId];
         require(game.player == address(0), "game already exists");
@@ -100,16 +106,14 @@ contract RockPaperScissors is PullPayment {
         game.bet = msg.value;
         uint deadline4Join = block.timestamp.add(duration4Join);
         game.deadline4Join = deadline4Join;
-        uint deadline4Reveal = deadline4Join.add(duration4Reveal);
-        game.deadline4Reveal = deadline4Reveal;
-        emit LogCreateGame(msg.sender, gameId, opponent, msg.value, deadline4Join, deadline4Reveal);
+        emit LogCreateGame(msg.sender, gameId, opponent, msg.value, deadline4Join);
     }
 
     /*
      * The opponent joins the game providing a clear choice.
      */
-    function joinGame(bytes32 gameId, uint8 choice) payable public whenNotPaused {
-        require(uint(Shape.NONE) < choice && choice <= uint(Shape.SCISSORS), "choice is out of bounds");
+    function joinGame(bytes32 gameId, Shape choice) payable public whenNotPaused {
+        require(choice != Shape.NONE, "NONE is not an allowed value");
 
         Game storage game = games[gameId];
         require(game.player != address(0), "game does not exist");
@@ -118,45 +122,40 @@ contract RockPaperScissors is PullPayment {
         require(game.opponentChoice == Shape.NONE, "opponent is already participating in the game");
         require(block.timestamp <= game.deadline4Join, "deadline for join has expired");
 
-        Shape opponentChoice = Shape(choice);
-        game.opponentChoice = opponentChoice;
-        // Adjust deadline for reveal
+        game.opponentChoice = choice;
+        // Set deadline for reveal
         uint deadline4Reveal = block.timestamp.add(duration4Reveal);
         game.deadline4Reveal = deadline4Reveal;
         // Compute opponent payment
         uint bet = game.bet;
         if (msg.value < bet) {
-            uint balance = getPayment(opponent);
-            uint difference = bet.sub(msg.value);
-            require(difference <= balance, "not enough balance");
-            asyncWithdrawTo(opponent, difference);
+            asyncWithdrawTo(opponent, bet.sub(msg.value));
         }
         else if (bet < msg.value) {
             asyncPayTo(opponent, msg.value.sub(bet));
         }
-        emit LogJoinGame(gameId, opponentChoice, msg.value, deadline4Reveal);
+        emit LogJoinGame(gameId, choice, msg.value, deadline4Reveal);
     }
 
     /*
-     * The player reveals the hashed choice providing the clear choice and its secret.
+     * The player reveals the hashed choice providing the plain text choice and its secret.
      */
-    function revealChoice(uint8 choice, bytes32 secret) public whenNotPaused {
-        bytes32 gameId = getHashedChoice(choice, secret);
+    function revealChoice(Shape choice, bytes32 secret) public whenNotPaused {
+        bytes32 gameId = generateGameId(msg.sender, choice, secret);
         Game storage game = games[gameId];
-        uint deadline4Reveal = game.deadline4Reveal;
-        require(0 < deadline4Reveal, "game does not exist");
+        address player = game.player;
+        require(player != address(0), "game does not exist");
 
         Shape opponentChoice = game.opponentChoice;
         require(opponentChoice != Shape.NONE, "opponent has not yet joined the game");
 
         require(game.playerChoice == Shape.NONE, "game already finished");
-        require(block.timestamp <= deadline4Reveal, "deadline for reveal has expired");
+        require(block.timestamp <= game.deadline4Reveal, "deadline for reveal has expired");
 
         Shape playerChoice = Shape(choice);
         game.playerChoice = playerChoice;
-        Payoff payoff = Payoff((3 + choice - uint(opponentChoice)) % 3);
+        Payoff payoff = Payoff((3 + uint(choice) - uint(opponentChoice)) % 3);
         uint bet = game.bet;
-        address player = game.player;
         address opponent = game.opponent;
         cleanAndReleaseGame(gameId);
 
@@ -168,8 +167,12 @@ contract RockPaperScissors is PullPayment {
         else if (payoff == Payoff.PLAYER) {
             asyncPayTo(player, bet.mul(2));
         }
-        else {
+        else if (payoff == Payoff.OPPONENT) {
             asyncPayTo(opponent, bet.mul(2));
+        }
+        else {
+            // It should never happen
+            assert(false);
         }
         emit LogRevealChoice(msg.sender, gameId, playerChoice, payoff);
     }
@@ -179,28 +182,29 @@ contract RockPaperScissors is PullPayment {
      */
     function cancelGame(bytes32 gameId) public whenNotPaused {
         Game storage game = games[gameId];
+        address player = game.player;
+        require(player != address(0), "game does not exist");
         require(game.opponentChoice == Shape.NONE, "opponent is already participating in the game");
-        uint deadline4Join = game.deadline4Join;
-        require(deadline4Join < block.timestamp, "deadline for join has not yet expired");
-        require(0 < deadline4Join, "game has not started");
+        require(game.deadline4Join < block.timestamp, "deadline for join has not yet expired");
         emit LogCancelGame(msg.sender, gameId);
         uint bet = game.bet;
         cleanAndReleaseGame(gameId);
 
+        // The opponent did not accept the bet
         if (0 < bet) {
-            asyncPayTo(game.player, bet);
+            asyncPayTo(player, bet);
         }
     }
 
     /*
-     * In cases where the player doesn't reveal his choice, the opponent can reclaim his bet i.e., the player is penalized.
+     * In cases where the player doesn't reveal his choice, the opponent can reclaim his bet i.e., the player is
+     * penalized.
      */
     function claim(bytes32 gameId) public whenNotPaused {
         Game storage game = games[gameId];
-        uint deadline4Reveal = game.deadline4Reveal;
-        require(0 < deadline4Reveal, "game has not started");
+        require(game.player != address(0), "game does not exist");
         require(game.opponentChoice != Shape.NONE, "opponent has not yet joined the game");
-        require(deadline4Reveal < block.timestamp, "deadline for reveal has not yet expired");
+        require(game.deadline4Reveal < block.timestamp, "deadline for reveal has not yet expired");
         uint bet = game.bet;
         address opponent = game.opponent;
         cleanAndReleaseGame(gameId);
@@ -220,16 +224,17 @@ contract RockPaperScissors is PullPayment {
         game.bet = 0;
         game.deadline4Join = 0;
         game.deadline4Reveal = 0;
-        // player is used to identify previous games
+        // player slot is used to identify previous games
     }
 
-    function() external payable {
+    function() external {
         revert();
     }
 
     function kill() public fromOwner whenPaused {
         address payable owner = address(uint160(getOwner()));
 
+        emit LogKill(owner);
         selfdestruct(owner);
     }
 }

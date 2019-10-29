@@ -12,7 +12,7 @@ contract('RockPaperScissors', (accounts) => {
     const TIE = 0, PLAYER = 1, OPPONENT = 2;
     const payoff = ["TIE", "PLAYER", "OPPONENT"];
     const BN_DURATION_FOR_JOIN = toBN(86400); // 1 day in secs
-    const BN_DURATION_FOR_REVEAL = toBN(60);  // 10 minutes in secs
+    const BN_DURATION_FOR_REVEAL = toBN(1800);  // 30 minutes in secs
     const BN_0 = toBN("0");
     const BN_1_ETH = toBN(toWei("1", "ether"));
     const BN_2_ETH = toBN(toWei("2", "ether"));
@@ -137,12 +137,15 @@ contract('RockPaperScissors', (accounts) => {
     describe("scenarios", () => {
         cases.forEach(sample => {
             it(`${sample.case}. Player choice is ${choices[sample.playerChoice]} and opponent choice is ${choices[sample.opponentChoice]}. Payoff is ${payoff[sample.payoff]}`, async () => {
-                const id = await rps.generateGameId(sample.playerChoice, secret);
+                const id = await rps.generateGameId(sample.player, sample.playerChoice, secret, {from: sample.player});
                 await rps.createGame(id, sample.opponent, BN_DURATION_FOR_JOIN, {
                     from: sample.player,
                     value: sample.bet
                 });
                 await rps.joinGame(id, sample.opponentChoice, {from: sample.opponent, value: sample.bet});
+                // Check contract balance
+                const contractBalance = toBN(await getBalance(rps.address));
+                assert.strictEqual((sample.bet * 2).toString(), contractBalance.toString(), "contract balance mismatch");
                 const result = await rps.revealChoice(sample.playerChoice, secret, {from: sample.player});
                 await eventEmitted(result, "LogRevealChoice", log => {
                     return (log.sender === sample.player && log.gameId === id && log.playerChoice.toNumber() === sample.playerChoice &&

@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import './SafeMath.sol';
 import "./Pausable.sol";
 
-contract PullPayment is Pausable {
+contract PullPayment {
     using SafeMath for uint;
     mapping(address=>uint) internal payments;
 
@@ -43,14 +43,14 @@ contract PullPayment is Pausable {
      *     The sender of the action, to which the payment is sent.
      *     The amount that was withdrawn.
      */
-    function withdrawPayment() public returns(bool) {
+    function withdrawPayment() public returns(bool success) {
         uint payment = payments[msg.sender];
         require(payment != 0, "balance is zero");
 
         payments[msg.sender] = 0;
         emit LogPaymentWithdrawn(msg.sender, payment);
-        msg.sender.transfer(payment);
-        return true;
+        (success,) = msg.sender.call.value(payment)("");
+        require(success);
     }
 
     /**

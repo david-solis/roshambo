@@ -1,14 +1,17 @@
 const truffleAssert = require('truffle-assertions');
 const {eventEmitted, reverts} = truffleAssert;
+const {toBN} = web3.utils;
 
 const RockPaperScissors = artifacts.require("RockPaperScissors");
 
 contract('RockPaperScissors', accounts => {
+    const BN_DURATION_FOR_REVEAL = toBN(1800); // 30 minutes in secs
+
     const [OWNER, NEW_OWNER, ALICE] = accounts;
     let owned;
 
     beforeEach("deploy new Owned", async () => {
-        owned = await RockPaperScissors.new(600, {from: OWNER});
+        owned = await RockPaperScissors.new(BN_DURATION_FOR_REVEAL, {from: OWNER});
     });
 
     describe("owner", function () {

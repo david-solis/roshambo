@@ -20,7 +20,7 @@ Of course, there are many ways to implement it, so we leave to yourselves to inv
 * How can you entice players to play, knowing that they may have their funding stuck in the contract if they faced an uncooperative player?
 
 ## Rules
-1. The rock breaks the scissors, the scissors cut the paper, and the paper covers the rock.
+1. The rock blunts the scissors, the scissors cut the paper, and the paper wraps the rock.
 2. A game begins when the player creates it.
 3. The game must be fair, so neither player should have an advantage over the other.
 4. A cheater player must always lose.
@@ -33,15 +33,13 @@ There are two players: the player and the opponent. The player chooses a move an
 This contract is secure in the sense that a player who has access to the blockchain and its contents cannot guess the movement of another player. In fact, the contract never stores the player's movement, but only the hash of the salted movement with a password that only the player knows. Since players cannot change their movement, this effectively guarantees that an opponent cannot cheat by looking at the transaction data and playing accordingly. In addition, the contract ensures that the hash function used is resistant to the preimage and the second preimage.
 
 ## Remarks
-*Low Difficulty*
-
+**Low Difficulty**
 * If you used enums, did you remember that the first enum's underlying value is actually 0 and that all storage is initially 0 too?
 
-*Medium Difficulty*
-
+**Medium Difficulty**
 * Did you make sure that Bob cannot spy on Alice's move before he plays?
 * Did you let one player use a fixed deadline to play right before then pretend the other one did not show up?
 
-*High Difficulty*
+**High Difficulty**
 * Did you let secret moves be reused?
 * Did you let Alice cancel the game when she saw that Bob's pending move would make her lose?
