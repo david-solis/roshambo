@@ -325,7 +325,6 @@ contract('RockPaperScissors', (accounts) => {
             const info = await rps.games(id);
             assert.strictEqual(info.player, ALICE, "player mismatch");
             assert.strictEqual(info.opponent, ADDRESS_ZERO, "opponent not cleaned");
-            assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
             assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");
@@ -414,7 +413,6 @@ contract('RockPaperScissors', (accounts) => {
             const info = await rps.games(id);
             assert.strictEqual(info.player, ALICE, "player mismatch");
             assert.strictEqual(info.opponent, ADDRESS_ZERO, "opponent not cleaned");
-            assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
             assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");
@@ -433,7 +431,6 @@ contract('RockPaperScissors', (accounts) => {
             const info = await rps.games(id);
             assert.strictEqual(info.player, ALICE, "player mismatch");
             assert.strictEqual(info.opponent, ADDRESS_ZERO, "opponent not cleaned");
-            assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
             assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");

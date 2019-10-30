@@ -29,7 +29,6 @@ contract RockPaperScissors is Pausable, PullPayment {
     struct Game {
         address player;
         address opponent;
-        Shape playerChoice;
         Shape opponentChoice;
         uint bet;
         // a single slot for deadline4Reveal and deadline4Join
@@ -149,11 +148,9 @@ contract RockPaperScissors is Pausable, PullPayment {
         Shape opponentChoice = game.opponentChoice;
         require(opponentChoice != Shape.NONE, "opponent has not yet joined the game");
 
-        require(game.playerChoice == Shape.NONE, "game already finished");
         require(block.timestamp <= game.deadline, "deadline for reveal has expired");
 
         Shape playerChoice = Shape(choice);
-        game.playerChoice = playerChoice;
         Payoff payoff = Payoff((3 + uint(choice) - uint(opponentChoice)) % 3);
         uint bet = game.bet;
         address opponent = game.opponent;
@@ -219,7 +216,6 @@ contract RockPaperScissors is Pausable, PullPayment {
     function cleanAndReleaseGame(bytes32 gameId) private {
         Game storage game = games[gameId];
         game.opponent = address(0);
-        game.playerChoice = Shape.NONE;
         game.opponentChoice = Shape.NONE;
         game.bet = 0;
         game.deadline = 0;
