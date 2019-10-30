@@ -12,12 +12,12 @@ contract('RockPaperScissors', (accounts) => {
     const NONE = 0, ROCK = 1, PAPER = 2, SCISSORS = 3, LIZARD = 4;
     const OPPONENT = 2;
 
-    // duration 4 reveal
+    // duration for reveal
     const BN_MIN_DURATION_FOR_REVEAL = toBN(1800);  // 30 minutes in secs
     const BN_MAX_DURATION_FOR_REVEAL = toBN(3600);  // 1 hour in secs
     const BN_DURATION_FOR_REVEAL = toBN(1800);      // 30 minutes in secs
 
-    // duration 4 join
+    // duration for join
     const BN_MIN_DURATION_FOR_JOIN = toBN(3600);    // 1 day in secs
     const BN_MAX_DURATION_FOR_JOIN = toBN(86400);   // 1 hour in secs
     const BN_DURATION_FOR_JOIN = toBN(43200);       // 12 hours in secs

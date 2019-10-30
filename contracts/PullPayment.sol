@@ -5,7 +5,7 @@ import "./Pausable.sol";
 
 contract PullPayment {
     using SafeMath for uint;
-    mapping(address=>uint) internal payments;
+    mapping(address=>uint) private payments;
 
     /**
      * Event emitted when the payment recorded here has been withdrawn.

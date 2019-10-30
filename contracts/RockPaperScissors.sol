@@ -38,10 +38,10 @@ contract RockPaperScissors is Pausable, PullPayment {
 
     mapping(bytes32 => Game) public games;
 
-    // duration 4 reveal
+    // duration for reveal
     uint private MIN_DURATION_FOR_REVEAL = 1800; // 30 minutes in seconds
     uint private MAX_DURATION_FOR_REVEAL = 3600; // 1 hour in seconds
-    // duration 4 join
+    // duration for join
     uint private MIN_DURATION_FOR_JOIN = 3600;   // 1 hour in seconds
     uint private MAX_DURATION_FOR_JOIN = 86400;  // 1 day in seconds
 
@@ -227,7 +227,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         // player slot is used to identify previous games
     }
 
-    function() external {
+    function() external payable {
         revert();
     }
 

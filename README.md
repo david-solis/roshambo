@@ -29,6 +29,9 @@ Of course, there are many ways to implement it, so we leave to yourselves to inv
 ## Description
 There are two players: the player and the opponent. The player chooses a move and a password; both inputs are used to generating a game ID. This identifier is used to create a game. At this stage, the player specifies the opponent, bet, and a deadline for the opponent to join the game. Next the opponent accepts the bet by joining the game and choosing his move. Then the player reveals his previous choice. To do so, the player sends his move and password in clear. The contract verifies that the hash of the entries received generates the same game ID. At this time, with the two movements revealed, the winner can be determined by the contract. The winner, if any, takes it all. In case of a tie, players recover their bet. A player who has not previously revealed his movement has automatically lost. To avoid a possible reentry attack, the contract, just before sending payments, restores the game status.
 
+The next figure illustrates the contract design.
+![Design](images/design.png)
+
 ## Threat Model
 This contract is secure in the sense that a player who has access to the blockchain and its contents cannot guess the movement of another player. In fact, the contract never stores the player's movement, but only the hash of the salted movement with a password that only the player knows. Since players cannot change their movement, this effectively guarantees that an opponent cannot cheat by looking at the transaction data and playing accordingly. In addition, the contract ensures that the hash function used is resistant to the preimage and the second preimage.
 
