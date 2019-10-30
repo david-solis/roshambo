@@ -172,8 +172,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.player, ALICE, "player mismatch");
             assert.strictEqual(info.opponent, BOB, "opponent mismatch");
             assert.strictEqual(BN_1_ETH.toString(), info.bet.toString(), "bet mismatch");
-            assert.notEqual(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not set");
-            assert.strictEqual(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not set");
+            assert.notEqual(info.deadline.toString(), BN_0.toString(), "deadline for join not set");
         });
     });
 
@@ -259,8 +258,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.opponent, BOB, "opponent mismatch");
             assert.strictEqual(info.opponentChoice.toNumber(), PAPER, "opponent choice mismatch");
             assert.strictEqual(BN_1_ETH.toString(), info.bet.toString(), "bet mismatch");
-            assert.notEqual(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not set");
-            assert.notEqual(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not set");
+            assert.notEqual(info.deadline.toString(), BN_0.toString(), "deadline for reveal not set");
         });
     });
 
@@ -330,8 +328,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
-            assert.equal(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not cleaned");
-            assert.equal(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not cleaned");
+            assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");
         });
     });
 
@@ -420,8 +417,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
-            assert.equal(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not cleaned");
-            assert.equal(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not cleaned");
+            assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");
         });
 
         it("should claim", async () => {
@@ -440,8 +436,7 @@ contract('RockPaperScissors', (accounts) => {
             assert.strictEqual(info.playerChoice.toNumber(), NONE, "player choice not cleaned");
             assert.strictEqual(info.opponentChoice.toNumber(), NONE, "opponent choice not cleaned");
             assert.strictEqual(BN_0.toString(), info.bet.toString(), "bet not cleaned");
-            assert.equal(info.deadline4Join.toString(), BN_0.toString(), "deadline for join not cleaned");
-            assert.equal(info.deadline4Reveal.toString(), BN_0.toString(), "deadline for reveal not cleaned");
+            assert.equal(info.deadline.toString(), BN_0.toString(), "deadline not cleaned");
         });
     });
 

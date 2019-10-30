@@ -32,8 +32,8 @@ contract RockPaperScissors is Pausable, PullPayment {
         Shape playerChoice;
         Shape opponentChoice;
         uint bet;
-        uint deadline4Join;
-        uint deadline4Reveal;
+        // a single slot for deadline4Reveal and deadline4Join
+        uint deadline;
     }
 
     mapping(bytes32 => Game) public games;
@@ -105,7 +105,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         game.opponent = opponent;
         game.bet = msg.value;
         uint deadline4Join = block.timestamp.add(duration4Join);
-        game.deadline4Join = deadline4Join;
+        game.deadline = deadline4Join;
         emit LogCreateGame(msg.sender, gameId, opponent, msg.value, deadline4Join);
     }
 
@@ -120,12 +120,12 @@ contract RockPaperScissors is Pausable, PullPayment {
         address opponent = game.opponent;
         require(opponent == msg.sender, "opponent is not the one specified by the player");
         require(game.opponentChoice == Shape.NONE, "opponent is already participating in the game");
-        require(block.timestamp <= game.deadline4Join, "deadline for join has expired");
+        require(block.timestamp <= game.deadline, "deadline for join has expired");
 
         game.opponentChoice = choice;
         // Set deadline for reveal
         uint deadline4Reveal = block.timestamp.add(duration4Reveal);
-        game.deadline4Reveal = deadline4Reveal;
+        game.deadline = deadline4Reveal;
         // Compute opponent payment
         uint bet = game.bet;
         if (msg.value < bet) {
@@ -150,7 +150,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         require(opponentChoice != Shape.NONE, "opponent has not yet joined the game");
 
         require(game.playerChoice == Shape.NONE, "game already finished");
-        require(block.timestamp <= game.deadline4Reveal, "deadline for reveal has expired");
+        require(block.timestamp <= game.deadline, "deadline for reveal has expired");
 
         Shape playerChoice = Shape(choice);
         game.playerChoice = playerChoice;
@@ -185,7 +185,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         address player = game.player;
         require(player != address(0), "game does not exist");
         require(game.opponentChoice == Shape.NONE, "opponent is already participating in the game");
-        require(game.deadline4Join < block.timestamp, "deadline for join has not yet expired");
+        require(game.deadline < block.timestamp, "deadline for join has not yet expired");
         emit LogCancelGame(msg.sender, gameId);
         uint bet = game.bet;
         cleanAndReleaseGame(gameId);
@@ -204,7 +204,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         Game storage game = games[gameId];
         require(game.player != address(0), "game does not exist");
         require(game.opponentChoice != Shape.NONE, "opponent has not yet joined the game");
-        require(game.deadline4Reveal < block.timestamp, "deadline for reveal has not yet expired");
+        require(game.deadline < block.timestamp, "deadline for reveal has not yet expired");
         uint bet = game.bet;
         address opponent = game.opponent;
         cleanAndReleaseGame(gameId);
@@ -222,8 +222,7 @@ contract RockPaperScissors is Pausable, PullPayment {
         game.playerChoice = Shape.NONE;
         game.opponentChoice = Shape.NONE;
         game.bet = 0;
-        game.deadline4Join = 0;
-        game.deadline4Reveal = 0;
+        game.deadline = 0;
         // player slot is used to identify previous games
     }
 
