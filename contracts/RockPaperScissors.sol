@@ -150,11 +150,12 @@ contract RockPaperScissors is Pausable, PullPayment {
 
         require(block.timestamp <= game.deadline, "deadline for reveal has expired");
 
-        Shape playerChoice = Shape(choice);
-        Payoff payoff = Payoff((3 + uint(choice) - uint(opponentChoice)) % 3);
         uint bet = game.bet;
         address opponent = game.opponent;
         cleanAndReleaseGame(gameId);
+
+        Shape playerChoice = Shape(choice);
+        Payoff payoff = Payoff((3 + uint(choice) - uint(opponentChoice)) % 3);
 
         // Assigns bets to winner or return them in case of draw
         if (payoff == Payoff.TIE) {

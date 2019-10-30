@@ -5,7 +5,7 @@ const assert = require("chai").assert;
 const truffleAssert = require('truffle-assertions');
 const {createTransactionResult, eventEmitted, reverts} = truffleAssert;
 const {toBN, toWei, asciiToHex} = web3.utils;
-const {getBalance} = web3.eth;
+const {getBalance, getBlock} = web3.eth;
 const uuidv4 = require("uuid/v4");
 
 contract('RockPaperScissors', (accounts) => {
@@ -245,8 +245,11 @@ contract('RockPaperScissors', (accounts) => {
             const balance1a = toBN(await getBalance(rps.address));
             await rps.createGame(id, BOB, BN_DURATION_FOR_JOIN, {from: ALICE, value: BN_1_ETH});
             const result = await rps.joinGame(id, PAPER, {from: BOB, value: BN_1_ETH});
+            const block = await getBlock(result.blockNumber);
+            // Try to assure deadline4Reveal was updated
             await eventEmitted(result, "LogJoinGame", log => {
-                return (log.gameId === id && log.opponentChoice.toNumber() === PAPER && BN_1_ETH.eq(log.amount));
+                return (log.gameId === id && log.opponentChoice.toNumber() === PAPER &&
+                    block.timestamp < log.deadline4Reveal && BN_1_ETH.eq(log.amount));
             });
             // Check contract balance
             const balance1b = toBN(await getBalance(rps.address));

@@ -46,3 +46,5 @@ This contract is secure in the sense that a player who has access to the blockch
 **High Difficulty**
 * Did you let secret moves be reused?
 * Did you let Alice cancel the game when she saw that Bob's pending move would make her lose?
+
+![Proof of Completion](images/proof-of-completion.png)
